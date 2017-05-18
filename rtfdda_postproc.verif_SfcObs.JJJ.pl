@@ -25,7 +25,7 @@ while ($iarg < $narg) {
         $iarg+=2;
         $ttime=`date -d "$OFFSET_HOUR hours ago" +%Y%m%d%H`;
         chomp($ttime);
-        $CYCLE=$$time;
+        $CYCLE=$ttime;
         next;
     }elsif ($argus[$iarg] eq "-s") {
         $START_HOUR=$argus[$iarg+1];
@@ -150,6 +150,7 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
         $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST\"' 'latlon=\"False\"' 'zoom=\"False\"' 'lat_s=1' 'lat_e=10' 'lon_s=1' 'lon_e=10' plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
         print($ncl);
         system($ncl);
+        system("rm -rf $mywork");
         system("date");
     }
 }

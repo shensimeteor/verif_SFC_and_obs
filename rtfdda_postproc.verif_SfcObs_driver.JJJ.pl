@@ -25,7 +25,7 @@ while ($iarg < $narg) {
         $iarg+=2;
         $ttime=`date -d "$OFFSET_HOUR hours ago" +%Y%m%d%H`;
         chomp($ttime);
-        $VALID=$$time;
+        $VALID=$ttime;
         next;
     }elsif ($argus[$iarg] eq "-i") {
         $VERIF_INTERVAL=$argus[$iarg+1];
@@ -48,8 +48,8 @@ $GMODDIR="$HOMEDIR/data/GMODJOBS/$GMID";
 $ENSPROCS="$ENV{CSH_ARCHIVE}/ncl";
 $MYLOGDIR="$HOMEDIR/data/cycles/$GMID/zout/postproc/ver$VALID";
 system("test -d $MYLOGDIR || mkdir -p $MYLOGDIR");
-require "$ENSPROCS/commont_tools.pl";
-require "$GMODJOBS/flexinput.pl"; 
+require "$ENSPROCS/common_tools.pl";
+require "$GMODDIR/flexinput.pl"; 
 $valid_hour=substr($VALID, 8,2);
 if($valid_hour % $CYC_INT != 0) {
     print "Error: Not a valid validate_time!\n";
@@ -58,13 +58,15 @@ if($valid_hour % $CYC_INT != 0) {
 #--------------------
 #do verif_SFC_and_obs
 #--------------------
-$start_try=&tool_date12_add("${VALID}00", -$FCST_LENGTH);
+$start_try=&tool_date12_add("${VALID}00", -$FCST_LENGTH, "hours");
+print $start_try."\n";
 $start_try=substr($start_try, 0, 10);
 $end_try=$VALID;
+print $end_try."\n";
 $try=$start_try;
 while ($try < $end_try) {
     #if $try is a cycle
-    $try_hour=substr($try_hour, 8, 2);
+    $try_hour=substr($try, 8, 2);
     if($try_hour % $CYC_INT != 0){
         $try=&hh_advan_date($try, 1);
         next;
@@ -72,14 +74,14 @@ while ($try < $end_try) {
     #get start_hour, end_hour
     $temp=&tool_date12_diff_minutes("${VALID}00", "${try}00");
     $end_hour = $temp/60;
-    $start_hour = $end_hour-$FCST_LENGTH;
+    $start_hour = $end_hour-$VERIF_INTERVAL;
     if($start_hour < 0) {
         $start_hour=0;
     }
     #run
-    $cmd="$GMODJOB/rtfdda_postproc.verif_SfcObs.JJJ.pl -id $GMID -m $MEMBER -c $try -s $start_hour -e $end_hour >& $MYLOGDIR/zverif_obssfc.$try";
+    $cmd="$GMODDIR/rtfdda_postproc.verif_SfcObs.JJJ.pl -id $GMID -m $MEMBER -c $try -s $start_hour -e $end_hour >& $MYLOGDIR/zverif_obssfc.$try";
     print($cmd."\n");
-    #system($cmd);
+    system($cmd);
     $try=&hh_advan_date($try,1);
 }
 
@@ -134,3 +136,4 @@ while ($try < $end_try) {
   }
 
   my $new_date = sprintf("%04d%02d%02d%02d",$yy,$mm,$dd,$hh);
+  }
