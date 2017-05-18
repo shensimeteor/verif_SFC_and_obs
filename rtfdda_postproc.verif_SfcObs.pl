@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 #arguments: -id GMID -m GFS_WCTRL -c CYCLE -o offset -s start_hour -e end_hour
 #dependencies: flexinput.pl add_files.ncl reformat_aux3.pl plot_SFC_and_obs.ncl convert_figure.ncl initial_mpres.ncl 
+#sishen, 2017-05-08
 #----------------------------------
 #parse arguments
 #----------------------------------
