@@ -92,50 +92,51 @@ while($h <= $END_HOUR) {
         #--------------------
         #get wrf files, from RUNDIR or ARCDIR: $file_path 
         #--------------------
-        system("test -d $mywork/auxfile || mkdir -p $mywork/auxfile");
-        chdir("$mywork/auxfile");
-        $file_name1=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", "");
+        system("test -d $mywork/wrfoutfile || mkdir -p $mywork/wrfoutfile");
+        chdir("$mywork/wrfoutfile");
+        $file_name1=&tool_date12_to_outfilename("wrfout_d0${dom}_", "${d}00", "");
         $file_path1="$RUNDIR/$CYCLE/WRF_P/$file_name1";
-        $file_name2=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc4.p");
-        $file_path2="$ARCDIR/aux3_$CYCLE/$file_name2";
+        $file_name2=&tool_date12_to_outfilename("wrfout_d0${dom}_", "${d}00", "_P+FCST");
+        $file_path2="$RUNDIR/$CYCLE/$file_name2";
+        $file_name3=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc4.p");
+        $file_path3="$ARCDIR/aux3_$CYCLE/$file_name2";
         if( -s "$file_path1" ) {
-            system("cp $file_path1 $mywork/auxfile/");
-            $file_path="$mywork/auxfile/$file_name1";
+            system("cp $file_path1 $mywork/wrfoutfile/");
+            $file_path="$mywork/wrfoutfile/$file_name1";
         }elsif(-s "$file_path2") {
-            system("cp $file_path2 $mywork/auxfile/");
+            system("cp $file_path2 $mywork/wrfoutfile/"):
+            $file_path="$mywork/wrfoutfile/$file_name2";
+        }elsif(-s "$file_path3") {
+            system("cp $file_path2 $mywork/wrfoutfile/");
             $file_name2_unpack=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc4");
             system("ncpdq -U $file_name2 $file_name2_unpack && rm -rf $file_name2");
-            $file_path="$mywork/auxfile/$file_name2_unpack";
+            if( -s "$file_name2_unpack") {
+                symlink("$ENSPROCS/add_files.ncl", "add_files.ncl");
+                $cmd="$ENSPROCS/reformat_aux3.pl $file_name2_unpack aux3_reformatted.nc";
+                print($cmd."\n");
+                system($cmd);
+                $file_path="$mywork/wrfoutfile/aux3_reformatted.nc";
+            }
         }else{
-            print("\nWarn: $file_path1 & $file_path2 NOT found!\n");
+            print("\nWarn: $file_path1 or $file_path2 or $file_path3 NOT found!\n");
             print(" - continue next date\n");
             $h+=1;
             next;
         }
-        #reformat aux
-        if( -s "$file_path") {
-            symlink("$ENSPROCS/add_files.ncl", "add_files.ncl");
-            $cmd="$ENSPROCS/reformat_aux3.pl $file_path aux3_reformatted.nc";
-            print($cmd."\n");
-            system($cmd);
-        }else{
-            print("\nError: $file_path NOT exist!\n");
+        if( ! -s "$file_path" ) {
+            print("\nError: $file_path not existed !\n");
             print(" - continue next date\n");
             $h+=1;
             next;
-        }
-        if( ! -s "aux3_reformatted.nc" ) {
-            print("\nError: aux3_reformatted.nc NOT generated!\n");
-            print(" - continue next date\n");
-            $h+=1;
-            next;
+        else{
+            print("\n Get Wrfout/Aux3 file: $file_path \n");
         }
         #--------------------
         #plot verification SFC_and_obs
         #--------------------
         system("test -d $mywork/plot || mkdir -p $mywork/plot");
         chdir("$mywork/plot");
-        symlink("$mywork/auxfile/aux3_reformatted.nc","aux3_reformatted.nc");
+        symlink("$mywork/wrffile/aux3_reformatted.nc","aux3_reformatted.nc");
         $fn="aux3_reformatted.nc";
         symlink("$ENSPROCS/plot_SFC_and_obs.ncl","plot_SFC_and_obs.ncl");
         symlink("$GSJOBDIR/ensproc/stationlist_site_dom${domi}","stationlist_site_dom${domi}");
