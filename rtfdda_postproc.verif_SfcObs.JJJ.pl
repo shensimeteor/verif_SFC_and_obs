@@ -56,22 +56,23 @@ $ENSPROCS="$ENV{CSH_ARCHIVE}/ncl";
 $RUNDIR="$HOMEDIR/data/cycles/$GMID/$MEMBER/";
 $ARCDIR="$HOMEDIR/data/cycles/$GMID/archive/$MEMBER/"; #aux_$cycle
 $OBS_BANK="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/thined_obs/";
-$WEB_DEST="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/web/verif_SFCOBS/gif";
+$WEB_DEST="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/web/verif_SFCOBS/gifs";
 system("test -d $WEB_DEST || mkdir -p $WEB_DEST");
 system("test -d $WEB_DEST/../cycles/ || mkdir -p $WEB_DEST/../cycles/");
 
-require $GMODDIR/flexinput.pl
+require "$GMODDIR/flexinput.pl";
 if ($END_HOUR == -1 ) {
     $END_HOUR=$FCST_LENGTH;
 }
 $WORKDIR="/dev/shm/postprocs/$GMID/verif_SFCOBS/$MEMBER";
 system("test -d $WORKDIR || mkdir -p $WORKDIR");
 require "$ENSPROCS/common_tools.pl";
-@DOMAINS=(1,2);
+@DOMAINS=(1,2,3);
 
 $h=$START_HOUR;
-while($h <= $END_HOUR) {
-    $d=&hh_advan_date($cycle, $h); 
+for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
+    $d=&hh_advan_date($CYCLE, $h); 
+    print $h."\n";
     for $dom (@DOMAINS) {
         print("begin $d dom$dom ------------------------\n");
         system("date");
@@ -79,14 +80,13 @@ while($h <= $END_HOUR) {
         #--------------------
         #get thined_obs
         #--------------------
-        $file_obs="$OBS_BANK/d{$dom}/${d}.hourly.obs_sgl.nc";
+        $file_obs="$OBS_BANK/d${dom}/${d}.hourly.obs_sgl.nc";
         if( -s $file_obs) {
             system("test -d $mywork/obs_thinned || mkdir -p $mywork/obs_thinned");
             system("cp $file_obs $mywork/obs_thinned");
         }else{
             print "\n Error: $file_obs NOT exist! \n";
             print " - next date\n";
-            $h+=1;
             next;
         }
         #--------------------
@@ -96,15 +96,16 @@ while($h <= $END_HOUR) {
         chdir("$mywork/wrfoutfile");
         $file_name1=&tool_date12_to_outfilename("wrfout_d0${dom}_", "${d}00", "");
         $file_path1="$RUNDIR/$CYCLE/WRF_P/$file_name1";
-        $file_name2=&tool_date12_to_outfilename("wrfout_d0${dom}_", "${d}00", "_P+FCST");
+        $file_name2=&tool_date12_to_outfilename("wrfout_d0${dom}_", "${d}00", ".${MEMBER}_P+FCST");
+        print($file_name2."\n");
         $file_path2="$RUNDIR/$CYCLE/$file_name2";
         $file_name3=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc4.p");
-        $file_path3="$ARCDIR/aux3_$CYCLE/$file_name2";
+        $file_path3="$ARCDIR/aux3_$CYCLE/$file_name3";
         if( -s "$file_path1" ) {
             system("cp $file_path1 $mywork/wrfoutfile/");
             $file_path="$mywork/wrfoutfile/$file_name1";
         }elsif(-s "$file_path2") {
-            system("cp $file_path2 $mywork/wrfoutfile/"):
+            system("cp $file_path2 $mywork/wrfoutfile/");
             $file_path="$mywork/wrfoutfile/$file_name2";
         }elsif(-s "$file_path3") {
             system("cp $file_path2 $mywork/wrfoutfile/");
@@ -120,15 +121,13 @@ while($h <= $END_HOUR) {
         }else{
             print("\nWarn: $file_path1 or $file_path2 or $file_path3 NOT found!\n");
             print(" - continue next date\n");
-            $h+=1;
             next;
         }
         if( ! -s "$file_path" ) {
             print("\nError: $file_path not existed !\n");
             print(" - continue next date\n");
-            $h+=1;
             next;
-        else{
+        }else{
             print("\n Get Wrfout/Aux3 file: $file_path \n");
         }
         #--------------------
@@ -136,19 +135,19 @@ while($h <= $END_HOUR) {
         #--------------------
         system("test -d $mywork/plot || mkdir -p $mywork/plot");
         chdir("$mywork/plot");
-        symlink("$mywork/wrffile/aux3_reformatted.nc","aux3_reformatted.nc");
-        $fn="aux3_reformatted.nc";
+        symlink("$file_path","wrfout_or_aux3reformated.nc");
+        $fn="wrfout_or_aux3reformated.nc";
         symlink("$ENSPROCS/plot_SFC_and_obs.ncl","plot_SFC_and_obs.ncl");
-        symlink("$GSJOBDIR/ensproc/stationlist_site_dom${domi}","stationlist_site_dom${domi}");
-        symlink("$GSJOBDIR/ensproc/map.ascii","map.ascii");
-        symlink("$GSJOBDIR/ensproc/ncl_functions/initial_mpres_d0${domi}.ncl", "initial_mpres.ncl");
-        symlink("$GSJOBDIR/ensproc/ncl_functions/convert_figure.ncl", "convert_figure.ncl");
+        symlink("$GMODDIR/ensproc/stationlist_site_dom${dom}","stationlist_site_dom${dom}");
+        symlink("$GMODDIR/ensproc/map.ascii","map.ascii");
+        symlink("$GMODDIR/ensproc/ncl_functions/initial_mpres_d0${dom}.ncl", "initial_mpres.ncl");
+        symlink("$GMODDIR/ensproc/ncl_functions/convert_figure.ncl", "convert_figure.ncl");
         system("test -d upper_air || mkdir upper_air");
         $dest="$WEB_DEST/$d/";
         system("test -d $dest || mkdir -p $dest");
         $dest2="$WEB_DEST/../cycles/$CYCLE/$d/";
         system("test -d $dest2 || mkdir -p $dest2");
-        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$dest\"' 'latlon=\"False\"' 'zoom=\"False\"' 'lat_s=1' 'lat_e=10' 'lon_s=1' 'lon_e=10' plot_SFC_and_obs.ncl >& zout.nclSFC.d${domi}.log";
+        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST\"' 'latlon=\"False\"' 'zoom=\"False\"' 'lat_s=1' 'lat_e=10' 'lon_s=1' 'lon_e=10' plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
         print($ncl);
         system($ncl);
         system("date");
@@ -207,5 +206,5 @@ while($h <= $END_HOUR) {
   }
 
   my $new_date = sprintf("%04d%02d%02d%02d",$yy,$mm,$dd,$hh);
-
+}
 
