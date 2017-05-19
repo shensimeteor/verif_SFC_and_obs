@@ -56,9 +56,11 @@ $ENSPROCS="$ENV{CSH_ARCHIVE}/ncl";
 $RUNDIR="$HOMEDIR/data/cycles/$GMID/$MEMBER/";
 $ARCDIR="$HOMEDIR/data/cycles/$GMID/archive/$MEMBER/"; #aux_$cycle
 $OBS_BANK="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/thined_obs/";
-$WEB_DEST="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/web/verif_SFCOBS/gifs";
+$WEB_DEST="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/web/verif_SFCOBS/";
+$WEB_DEST2="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/web/";
 system("test -d $WEB_DEST || mkdir -p $WEB_DEST");
-system("test -d $WEB_DEST/../cycles/ || mkdir -p $WEB_DEST/../cycles/");
+system("test -d $WEB_DEST/cycles/ || mkdir -p $WEB_DEST/cycles/");
+system("test -d $WEB_DEST/gifs/ || mkdir -p $WEB_DEST/gifs/");
 
 require "$GMODDIR/flexinput.pl";
 if ($END_HOUR == -1 ) {
@@ -143,14 +145,32 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
         symlink("$GMODDIR/ensproc/ncl_functions/initial_mpres_d0${dom}.ncl", "initial_mpres.ncl");
         symlink("$GMODDIR/ensproc/ncl_functions/convert_figure.ncl", "convert_figure.ncl");
         system("test -d upper_air || mkdir upper_air");
-        $dest="$WEB_DEST/$d/";
+        $dest="$WEB_DEST/gifs/$d";
         system("test -d $dest || mkdir -p $dest");
-        $dest2="$WEB_DEST/../cycles/$CYCLE/$d/";
+        $dest2="$WEB_DEST/cycles/$CYCLE/$d";
         system("test -d $dest2 || mkdir -p $dest2");
-        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST\"' 'latlon=\"False\"' 'zoom=\"False\"' 'lat_s=1' 'lat_e=10' 'lon_s=1' 'lon_e=10' plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
+        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST/gifs/\"' 'latlon=\"False\"' 'zoom=\"False\"' 'lat_s=1' 'lat_e=10' 'lon_s=1' 'lon_e=10' plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
         print($ncl);
         system($ncl);
+        chdir("$WORKDIR");
         system("rm -rf $mywork");
+        #to overwrite cycles & gifs
+      #  $dest_cp="$WEB_DEST2/cycles/$CYCLE/$d";
+      #  system("test -d $dest_cp || mkdir -p $dest_cp");
+      #  system("cp -rf $dest2/* $dest_cp/");
+        $dest_cp1="$WEB_DEST2/cycles/$CYCLE";
+        $dest_cp2="$WEB_DEST2/cycles/${CYCLE}v";
+        if(-d "$dest_cp1") {
+            system("test -d $dest_cp1/$d || mkdir -p $dest_cp1/$d");
+            system("cp -rf $dest2/* $dest_cp1/$d/");
+            system("mv $dest_cp1 $dest_cp2");
+        }elsif (-d "$dest_cp2") {
+            system("test -d $dest_cp2/$d || mkdir -p $dest_cp2/$d");
+            system("cp -rf $dest2/* $dest_cp2/$d/");
+        }else{
+            system("test -d $dest_cp2/$d || mkdir -p $dest_cp2/$d");
+            system("cp -rf $dest2/* $dest_cp2/$d/");
+        }
         system("date");
     }
 }
