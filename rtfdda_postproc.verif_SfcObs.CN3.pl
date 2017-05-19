@@ -69,7 +69,7 @@ if ($END_HOUR == -1 ) {
 $WORKDIR="/dev/shm/postprocs/$GMID/verif_SFCOBS/$MEMBER";
 system("test -d $WORKDIR || mkdir -p $WORKDIR");
 require "$ENSPROCS/common_tools.pl";
-@DOMAINS=(1,2); #
+@DOMAINS=(2); #
 
 $h=$START_HOUR;
 for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
