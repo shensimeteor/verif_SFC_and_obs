@@ -106,8 +106,12 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
         }elsif(-s "$file_path2") {
             system("cp $file_path2 $mywork/wrfoutfile/");
             $file_name2_unpack=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc4");
-            system("ncpdq -U $file_name2 $file_name2_unpack && rm -rf $file_name2");
-            $file_path="$mywork/wrfoutfile/$file_name2_unpack";
+            print("doing ncpdq unpacking..\n");
+            system("ncpdq -O -U $file_name2 $file_name2_unpack && rm -rf $file_name2");
+            print("doing nc4 to nc3..\n");
+            $file_name2_nc3=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc");
+            system("ncks -O -3 $file_name2_unpack $file_name2_nc3");
+            $file_path="$mywork/wrfoutfile/$file_name2_nc3";
         }else{
             print("\nWarn: $file_path1 & $file_path2 NOT found!\n");
             print(" - continue next date\n");
@@ -154,7 +158,7 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
         print($ncl);
         system($ncl);
         chdir("$WORKDIR");
-        system("rm -rf $mywork");
+#        system("rm -rf $mywork");
         #to overwrite cycles & gifs
       #  $dest_cp="$WEB_DEST2/cycles/$CYCLE/$d";
       #  system("test -d $dest_cp || mkdir -p $dest_cp");

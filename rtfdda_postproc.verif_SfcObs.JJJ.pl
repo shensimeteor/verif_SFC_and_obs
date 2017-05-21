@@ -112,13 +112,21 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
         }elsif(-s "$file_path3") {
             system("cp $file_path2 $mywork/wrfoutfile/");
             $file_name2_unpack=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc4");
-            system("ncpdq -U $file_name2 $file_name2_unpack && rm -rf $file_name2");
-            if( -s "$file_name2_unpack") {
+            print("doing ncpdq unpacking..\n");
+            system("ncpdq -O -U $file_name2 $file_name2_unpack && rm -rf $file_name2");
+            print("doing nc4 to nc3..\n");
+            $file_name2_nc3=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc");
+            system("ncks -O -3 $file_name2_unpack $file_name2_nc3");
+            if( -s "$file_name2_nc3") {
                 symlink("$ENSPROCS/add_files.ncl", "add_files.ncl");
-                $cmd="$ENSPROCS/reformat_aux3.pl $file_name2_unpack aux3_reformatted.nc";
+                $cmd="$ENSPROCS/reformat_aux3.pl $file_name2_nc3 aux3_reformatted.nc";
                 print($cmd."\n");
                 system($cmd);
                 $file_path="$mywork/wrfoutfile/aux3_reformatted.nc";
+            }else{
+                print("\nError: $file_name2_nc3 not exist!\n");
+                print(" - continue next date\n");
+                next;
             }
         }else{
             print("\nWarn: $file_path1 or $file_path2 or $file_path3 NOT found!\n");
