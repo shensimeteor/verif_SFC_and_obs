@@ -100,6 +100,8 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
         $file_path1="$RUNDIR/$CYCLE/WRF_P/$file_name1";
         $file_name2=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc4.p");
         $file_path2="$ARCDIR/aux3_$CYCLE/$file_name2";
+        $file_name3=$file_name2;
+        $file_path3="$RUNDIR/$CYCLE/WRF_P/$file_name3"; #temporary path
         if( -s "$file_path1" ) {
             system("cp $file_path1 $mywork/wrfoutfile/");
             $file_path="$mywork/wrfoutfile/$file_name1";
@@ -112,8 +114,17 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
             $file_name2_nc3=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc");
             system("ncks -O -3 $file_name2_unpack $file_name2_nc3");
             $file_path="$mywork/wrfoutfile/$file_name2_nc3";
+        }elsif(-s "$file_path3") {
+            system("cp $file_path3 $mywork/wrfoutfile/");
+            $file_name3_unpack=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc4");
+            print("doing ncpdq unpacking..\n");
+            system("ncpdq -O -U $file_name3 $file_name3_unpack && rm -rf $file_name3");
+            print("doing nc4 to nc3..\n");
+            $file_name3_nc3=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc");
+            system("ncks -O -3 $file_name3_unpack $file_name3_nc3");
+            $file_path="$mywork/wrfoutfile/$file_name3_nc3";
         }else{
-            print("\nWarn: $file_path1 & $file_path2 NOT found!\n");
+            print("\nWarn: $file_path1 & $file_path2 & $file_path3 NOT found!\n");
             print(" - continue next date\n");
             $h+=1;
             next;

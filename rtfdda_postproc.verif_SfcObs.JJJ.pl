@@ -103,33 +103,43 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
         $file_path2="$RUNDIR/$CYCLE/$file_name2";
         $file_name3=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc4.p");
         $file_path3="$ARCDIR/aux3_$CYCLE/$file_name3";
+        $file_name4=$file_name3;
+        $file_path4="$RUNDIR/$CYCLE/WRF_P/$file_name4"; #temporary path
         if( -s "$file_path1" ) {
             system("cp $file_path1 $mywork/wrfoutfile/");
             $file_path="$mywork/wrfoutfile/$file_name1";
         }elsif(-s "$file_path2") {
             system("cp $file_path2 $mywork/wrfoutfile/");
             $file_path="$mywork/wrfoutfile/$file_name2";
-        }elsif(-s "$file_path3") {
-            system("cp $file_path2 $mywork/wrfoutfile/");
-            $file_name2_unpack=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc4");
+        }elsif(-s "$file_path3" or -s "$file_path4") {
+            if (-s "$file_path3") {
+                system("cp $file_path3 $mywork/wrfoutfile/");
+            }else{
+                system("cp $file_path4 $mywork/wrfoutfile/");
+            }
+            $file_name3_unpack=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc4");
             print("doing ncpdq unpacking..\n");
-            system("ncpdq -O -U $file_name2 $file_name2_unpack && rm -rf $file_name2");
+            system("ncpdq -O -U $file_name3 $file_name3_unpack && rm -rf $file_name3");
             print("doing nc4 to nc3..\n");
-            $file_name2_nc3=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc");
-            system("ncks -O -3 $file_name2_unpack $file_name2_nc3");
-            if( -s "$file_name2_nc3") {
+            $file_name3_nc3=&tool_date12_to_outfilename("auxhist3_d0${dom}_", "${d}00", ".nc");
+            system("ncks -O -3 $file_name3_unpack $file_name3_nc3");
+            if( -s "$file_name3_nc3") {
                 symlink("$ENSPROCS/add_files.ncl", "add_files.ncl");
-                $cmd="$ENSPROCS/reformat_aux3.pl $file_name2_nc3 aux3_reformatted.nc";
+                $cmd="$ENSPROCS/reformat_aux3.pl $file_name3_nc3 aux3_reformatted.nc";
                 print($cmd."\n");
                 system($cmd);
                 $file_path="$mywork/wrfoutfile/aux3_reformatted.nc";
             }else{
-                print("\nError: $file_name2_nc3 not exist!\n");
+                print("\nError: $file_name3_nc3 not exist!\n");
                 print(" - continue next date\n");
                 next;
             }
         }else{
-            print("\nWarn: $file_path1 or $file_path2 or $file_path3 NOT found!\n");
+            print("\nWarn: wrfout/aux3 file of below path NOT found!\n");
+            print(" - $file_path1");
+            print(" - $file_path2");
+            print(" - $file_path3");
+            print(" - $file_path4");
             print(" - continue next date\n");
             next;
         }
