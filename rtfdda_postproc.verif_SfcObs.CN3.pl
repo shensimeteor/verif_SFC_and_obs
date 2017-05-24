@@ -160,6 +160,7 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
         symlink("$GMODDIR/ensproc/map.ascii","map.ascii");
         symlink("$GMODDIR/ensproc/ncl_functions/initial_mpres_d0${dom}.ncl", "initial_mpres.ncl");
         symlink("$GMODDIR/ensproc/ncl_functions/convert_figure.ncl", "convert_figure.ncl");
+        symlink("$GMODDIR/ensproc/ncl_functions/convert_and_copyout.ncl", "convert_and_copyout.ncl");
         system("test -d upper_air || mkdir upper_air");
         $dest="$WEB_DEST/gifs/$d";
         system("test -d $dest || mkdir -p $dest");
@@ -190,8 +191,8 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
         system("date");
     }
 }
-
-
+#since no background running, just delete this cycle temp dir 
+system("rm -rf $WORKDIR/$CYCLE");
 
   #-----------------------------------------------------------------------------
   # 10.3 Subroutine to avance the date
