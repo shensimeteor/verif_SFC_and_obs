@@ -192,6 +192,8 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
         system("date");
     }
 }
+#since no background running, just delete this cycle temp dir 
+system("rm -rf $WORKDIR/$CYCLE");
 
 
 
