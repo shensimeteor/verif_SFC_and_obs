@@ -176,7 +176,7 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
         system("test -d $dest || mkdir -p $dest");
         $dest2="$WEB_DEST/cycles/$CYCLE/$d";
         system("test -d $dest2 || mkdir -p $dest2");
-        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST/gifs/\"' 'latlon=\"False\"' 'zoom=\"False\"' 'lat_s=1' 'lat_e=10' 'lon_s=1' 'lon_e=10' plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
+        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST/gifs/\"' 'latlon=\"True\"' 'zoom=\"True\"' 'lat_s=$DOM_LAT1[$isub]' 'lat_e=$DOM_LAT2[$isub]' 'lon_s=$DOM_LON1[$isub]' 'lon_e=$DOM_LON2[$isub]' plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
         print($ncl);
         system($ncl);
         chdir("$WORKDIR");
