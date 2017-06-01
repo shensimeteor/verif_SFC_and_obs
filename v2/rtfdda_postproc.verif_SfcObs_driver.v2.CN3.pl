@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 #arguments: -id GMID -m GFS_WCTRL [-o offset_hour | -v valid_datetime] -i verify_interval [-l max_verify_hours] [-d verify_incre_hour] [-p max_run_parallel]
+#max_run_parallel: should depends on CPU cores & /dev/shm size
 #sishen 2017-05-18
+#sishen 2017-06-01, v2, support parallel running
 #----------------------------------
 #parse arguments
 #----------------------------------
@@ -106,14 +108,18 @@ while ($try < $end_try) {
         print($cmd."\n");
         system($cmd);
     }else{
-        $n_runer=`ps aux | grep "$EXECUTOR.*$GMID" | wc -l`;
+        $n_runer=`ps aux | grep "$EXECUTOR.*$GMID" | grep -v "grep" | wc -l`;
         chomp($n_runer);
+        print "n_runer=$n_runer \n";
         while($n_runer >= $MAX_PARALLEL_RUN) {
+            print "to wait++, n_runer=$n_runer\n";
             sleep 30;
+            $n_runer=`ps aux | grep "$EXECUTOR.*$GMID" | grep -v "grep" | wc -l`;
+            chomp($n_runer);
         }
         print($cmd." & \n");
         system("$cmd &");
-        sleep 5;
+        sleep 10;
     }
     $try=&hh_advan_date($try,1);
 }
