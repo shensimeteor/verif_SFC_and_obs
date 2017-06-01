@@ -86,7 +86,7 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
         $dom=$DOM_ID[$isub-1];
         $dom_obs=$OBS_DOM_ID[$isub-1];
         $dom_wrf=$WRF_DOM_ID[$isub-1];
-        print("begin $d dom$dom (use obs: dom$dom_obs, wrf: dom$dom_wrf) --------------------\n");
+        print("begin $d dom$dom (use obs: $dom_obs, wrf: $dom_wrf --------------------\n");
         system("date");
         $mywork="$WORKDIR/$CYCLE/$d/d$dom/";
         #--------------------
