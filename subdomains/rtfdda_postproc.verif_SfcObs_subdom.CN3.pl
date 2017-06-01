@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-#arguments: -id GMID -m GFS_WCTRL -c CYCLE -o offset -s start_hour -e end_hour 
+#arguments: -id GMID -m GFS_WCTRL -c CYCLE -o offset -s start_hour -e end_hour -d incre_hour
 #dependencies: flexinput.pl subdomain.for_verif_sfcobs.pl
 #----------------------------------
 #parse arguments
@@ -35,17 +35,22 @@ while ($iarg < $narg) {
         $END_HOUR=$argus[$iarg+1];
         $iarg+=2;
         next;
+    }elsif ($argus[$iarg] eq "-d") {
+        $INCRE_HOUR=$argus[$iarg+1];
+        $iarg+=2;
+        next;
     }elsif ($argus[$iarg] eq "--") {
         last;
     }
 }
 if ( ! ("$CYCLE" and "$GMID" and "$MEMBER")) {
-    print "<usage> : $0  -id GMID -m GFS_WCTRL -c CYCLE -o offset [-s start_hour] [-e end_hour] \n";
+    print "<usage> : $0  -id GMID -m GFS_WCTRL -c CYCLE -o offset [-s start_hour] [-e end_hour] [-d incre_hour]\n";
     print "- sishen, 2017-5-17 \n";
     exit(-1);
 }
 $START_HOUR=0 if(! "$START_HOUR");
 $END_HOUR=-1 if(! "$END_HOUR");
+$INCRE_HOUR=1 if(! "$INCRE_HOUR");
 
 #----------------------------------
 #define CONSTANTS
@@ -79,7 +84,7 @@ system("test -d $WORKDIR || mkdir -p $WORKDIR");
 require "$ENSPROCS/common_tools.pl";
 
 $h=$START_HOUR;
-for ($h=$START_HOUR; $h<=$END_HOUR; $h++) {
+for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
     $d=&hh_advan_date($CYCLE, $h); 
     print $h."\n";
     for $isub (1..$n_subdom) {
