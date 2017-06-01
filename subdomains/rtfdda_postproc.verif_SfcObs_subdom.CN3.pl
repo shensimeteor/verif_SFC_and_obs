@@ -185,7 +185,7 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
         print($ncl);
         system($ncl);
         chdir("$WORKDIR");
-        #system("rm -rf $mywork"); #temp for test
+        system("rm -rf $mywork"); #temp for test
         #to overwrite cycles & gifs
       #  $dest_cp="$WEB_DEST2/cycles/$CYCLE/$d";
       #  system("test -d $dest_cp || mkdir -p $dest_cp");
