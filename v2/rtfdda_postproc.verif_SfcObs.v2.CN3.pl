@@ -149,7 +149,6 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
             }else{
                 print("\nWarn: $file_path1 & $file_path2 & $file_path3 NOT found!\n");
                 print(" - continue next date\n");
-                $h+=1;
                 next;
             }
             #reformat aux
@@ -161,13 +160,11 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
             }else{
                 print("\nError: $file_path NOT exist!\n");
                 print(" - continue next date\n");
-                $h+=1;
                 next;
             }
             if( ! -s "aux3_reformatted.nc" ) {
                 print("\nError: aux3_reformatted.nc NOT generated!\n");
                 print(" - continue next date\n");
-                $h+=1;
                 next;
             }
             $file_path="$mywork/wrfoutfile/aux3_reformatted.nc";
@@ -179,10 +176,10 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
         chdir("$mywork/plot");
         symlink("$file_path","wrfout_or_aux3reformated.nc");
         $fn="wrfout_or_aux3reformated.nc";
-        symlink("$ENSPROCS/plot_SFC_and_obs.ncl","plot_SFC_and_obs.ncl");
+        symlink("$ENSPROCS/plot_SFC_and_obs_withStats.ncl","plot_SFC_and_obs.ncl");
         symlink("$GMODDIR/ensproc/stationlist_site_dom${dom_wrf}","stationlist_site_dom${dom_wrf}");
         symlink("$GMODDIR/ensproc/map.ascii","map.ascii");
-        symlink("$GMODDIR/ensproc/ncl_functions/initial_mpres_d0${dom_wrf}.ncl", "initial_mpres.ncl");
+        symlink("$GMODDIR/ensproc/ncl_functions/initial_mpres_d0${dom}.ncl", "initial_mpres.ncl"); #
         symlink("$GMODDIR/ensproc/ncl_functions/convert_figure.ncl", "convert_figure.ncl");
         symlink("$GMODDIR/ensproc/ncl_functions/convert_and_copyout.ncl", "convert_and_copyout.ncl");
         system("test -d upper_air || mkdir upper_air");
