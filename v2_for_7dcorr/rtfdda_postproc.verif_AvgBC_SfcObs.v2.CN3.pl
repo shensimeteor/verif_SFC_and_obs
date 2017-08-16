@@ -5,6 +5,7 @@
 #dependencies: flexinput.pl verif_sfcobs.input.pl
 #modify from rtfdda_postproc.verif_SfcObs.v2.CN3.pl, 2017.8.10, to verif_SfcObs for 7dAVG(corr.nc)
 #need prepare HGT file (ensproc/nc_templates/GFS_WCTRL_auxhist3_d02_template_HGT.nc), 
+#2017-08-15, change to use plot_SFC_and_obs_new.ncl
 #----------------------------------
 #parse arguments
 #----------------------------------
@@ -68,9 +69,11 @@ $DATEDIR="$HOMEDIR/data/cycles/ensprocs/$GMID/process2/7dAVG/files/";
 $OBS_BANK="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/thined_obs/";
 $WEB_DEST="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/web/verif_7dAVG_SFCOBS/";
 $WEB_DEST2="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/web/";
+$DIR_STATS="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/web/stats_7dAVG_SFCOBS/$CYCLE/";
 system("test -d $WEB_DEST || mkdir -p $WEB_DEST");
 system("test -d $WEB_DEST/cycles/ || mkdir -p $WEB_DEST/cycles/");
 system("test -d $WEB_DEST/gifs/ || mkdir -p $WEB_DEST/gifs/");
+system("test -d $DIR_STATS || mkdir -p $DIR_STATS");
 
 require "$GMODDIR/flexinput.pl";
 if ($END_HOUR == -1 ) {
@@ -87,7 +90,6 @@ $n_subdom=scalar(@DOM_ID);
 $WORKDIR="/dev/shm/postprocs/$GMID/verif_7dAVG_SFCOBS/$MEMBER";
 system("test -d $WORKDIR || mkdir -p $WORKDIR");
 require "$ENSPROCS/common_tools.pl";
-
 $h=$START_HOUR;
 for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
     $d=&hh_advan_date($CYCLE, $h); 
@@ -150,7 +152,7 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
         chdir("$mywork/plot");
         symlink("$file_path","wrfout_or_aux3reformated.nc");
         $fn="wrfout_or_aux3reformated.nc";
-        symlink("$ENSPROCS/plot_SFC_and_obs_withStats.ncl","plot_SFC_and_obs.ncl");
+        symlink("$ENSPROCS/plot_SFC_and_obs_new.ncl","plot_SFC_and_obs.ncl");
         symlink("$GMODDIR/ensproc/stationlist_site_dom${dom_wrf}","stationlist_site_dom${dom_wrf}");
         symlink("$GMODDIR/ensproc/map.ascii","map.ascii");
         symlink("$GMODDIR/ensproc/ncl_functions/initial_mpres_d0${dom_wrf}.ncl", "initial_mpres.ncl");
@@ -166,7 +168,8 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
         }else{
             $iszoom="True";
         }
-        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST/gifs/\"' 'latlon=\"True\"' 'zoom=\"$iszoom\"' 'lat_s=$DOM_LAT1[$isub-1]' 'lat_e=$DOM_LAT2[$isub-1]' 'lon_s=$DOM_LON1[$isub-1]' 'lon_e=$DOM_LON2[$isub-1]' plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
+        $file_stats="$DIR_STATS/d${dom}_${d}_stats.txt";
+        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST/gifs/\"' 'latlon=\"True\"' 'zoom=\"$iszoom\"' 'lat_s=$DOM_LAT1[$isub-1]' 'lat_e=$DOM_LAT2[$isub-1]' 'lon_s=$DOM_LON1[$isub-1]' 'lon_e=$DOM_LON2[$isub-1]' 'showStats=\"True\"' 'fileStats=\"$file_stats\"' plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
         print($ncl);
         system($ncl);
         chdir("$WORKDIR");

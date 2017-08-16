@@ -2,6 +2,7 @@
 #arguments: -id GMID -m GFS_WCTRL [-c CYCLE | -o offset] [-s start_hour] [-e end_hour] [-d incre_hour]
 #v1, 2017-5-17
 #v2, 2017-6-1, support subdomain, reading verif_sfcobs.input.pl
+#2017-08-15, change to use plot_SFC_and_obs_new.ncl 
 #dependencies: flexinput.pl verif_sfcobs.input.pl etc.
 #----------------------------------
 #parse arguments
@@ -65,9 +66,11 @@ $ARCDIR="$HOMEDIR/data/cycles/$GMID/archive/$MEMBER/"; #aux_$cycle
 $OBS_BANK="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/thined_obs/";
 $WEB_DEST="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/web/verif_SFCOBS/";
 $WEB_DEST2="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/web/";
+$DIR_STATS="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/web/stats_SFCOBS/$CYCLE";
 system("test -d $WEB_DEST || mkdir -p $WEB_DEST");
 system("test -d $WEB_DEST/cycles/ || mkdir -p $WEB_DEST/cycles/");
 system("test -d $WEB_DEST/gifs/ || mkdir -p $WEB_DEST/gifs/");
+system("test -d $DIR_STATS || mkdir -p $DIR_STATS"); 
 
 require "$GMODDIR/flexinput.pl";
 if ($END_HOUR == -1 ) {
@@ -176,7 +179,7 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
         chdir("$mywork/plot");
         symlink("$file_path","wrfout_or_aux3reformated.nc");
         $fn="wrfout_or_aux3reformated.nc";
-        symlink("$ENSPROCS/plot_SFC_and_obs_withStats.ncl","plot_SFC_and_obs.ncl");
+        symlink("$ENSPROCS/plot_SFC_and_obs_new.ncl","plot_SFC_and_obs.ncl");
         symlink("$GMODDIR/ensproc/stationlist_site_dom${dom_wrf}","stationlist_site_dom${dom_wrf}");
         symlink("$GMODDIR/ensproc/map.ascii","map.ascii");
         symlink("$GMODDIR/ensproc/ncl_functions/initial_mpres_d0${dom}.ncl", "initial_mpres.ncl"); #
@@ -192,7 +195,8 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
         }else{
             $iszoom="True";
         }
-        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST/gifs/\"' 'latlon=\"True\"' 'zoom=\"$iszoom\"' 'lat_s=$DOM_LAT1[$isub-1]' 'lat_e=$DOM_LAT2[$isub-1]' 'lon_s=$DOM_LON1[$isub-1]' 'lon_e=$DOM_LON2[$isub-1]' plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
+        $file_stats="$DIR_STATS/d${dom}_${d}_stats.txt"; 
+        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST/gifs/\"' 'latlon=\"True\"' 'zoom=\"$iszoom\"' 'lat_s=$DOM_LAT1[$isub-1]' 'lat_e=$DOM_LAT2[$isub-1]' 'lon_s=$DOM_LON1[$isub-1]' 'lon_e=$DOM_LON2[$isub-1]' 'showStats=\"True\"' 'fileStats=\"$file_stats\"' plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
         print($ncl);
         system($ncl);
         chdir("$WORKDIR");
