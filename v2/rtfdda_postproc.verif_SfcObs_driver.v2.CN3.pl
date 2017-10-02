@@ -3,6 +3,7 @@
 #max_run_parallel: should depends on CPU cores & /dev/shm size
 #sishen 2017-05-18
 #sishen 2017-06-01, v2, support parallel running
+#sishen 2017-08-20, reverse the order of submitting cycles (latest cycle first), update on VERIF_INTERVAL
 #----------------------------------
 #parse arguments
 #----------------------------------
@@ -87,14 +88,9 @@ print $start_try."\n";
 $start_try=substr($start_try, 0, 10);
 $end_try=$VALID;
 print $end_try."\n";
-$try=$start_try;
-while ($try < $end_try) {
-    #if $try is a cycle
-    $try_hour=substr($try, 8, 2);
-    if($try_hour % $CYC_INT != 0){
-        $try=&hh_advan_date($try, 1);
-        next;
-    }
+#$try=$start_try;
+$try=&hh_advan_date($end_try, -$VERIF_INTERVAL);
+while ($try >= $start_try) {
     #get start_hour, end_hour
     $temp=&tool_date12_diff_minutes("${VALID}00", "${try}00");
     $end_hour = $temp/60;
@@ -121,7 +117,7 @@ while ($try < $end_try) {
         system("$cmd &");
         sleep 10;
     }
-    $try=&hh_advan_date($try,1);
+    $try=&hh_advan_date($try,-$VERIF_INTERVAL);
 }
 
 

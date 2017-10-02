@@ -186,8 +186,8 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
         symlink("$GMODDIR/ensproc/ncl_functions/convert_figure.ncl", "convert_figure.ncl");
         symlink("$GMODDIR/ensproc/ncl_functions/convert_and_copyout.ncl", "convert_and_copyout.ncl");
         system("test -d upper_air || mkdir upper_air");
-        $dest="$WEB_DEST/gifs/$d";
-        system("test -d $dest || mkdir -p $dest");
+#        $dest="$WEB_DEST/gifs/$d";
+#        system("test -d $dest || mkdir -p $dest");
         $dest2="$WEB_DEST/cycles/$CYCLE/$d";
         system("test -d $dest2 || mkdir -p $dest2");
         if($DOM_LAT1[$isub-1] < 0) {
@@ -196,7 +196,7 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
             $iszoom="True";
         }
         $file_stats="$DIR_STATS/d${dom}_${d}_stats.txt"; 
-        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST/gifs/\"' 'latlon=\"True\"' 'zoom=\"$iszoom\"' 'lat_s=$DOM_LAT1[$isub-1]' 'lat_e=$DOM_LAT2[$isub-1]' 'lon_s=$DOM_LON1[$isub-1]' 'lon_e=$DOM_LON2[$isub-1]' 'showStats=\"True\"' 'fileStats=\"$file_stats\"' plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
+        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST/gifs/\"' 'latlon=\"True\"' 'zoom=\"$iszoom\"' 'lat_s=$DOM_LAT1[$isub-1]' 'lat_e=$DOM_LAT2[$isub-1]' 'lon_s=$DOM_LON1[$isub-1]' 'lon_e=$DOM_LON2[$isub-1]' 'showStats=\"True\"' 'fileStats=\"$file_stats\"' 'optOutput=\"cycleOnly\"'  plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
         print($ncl);
         system($ncl);
         chdir("$WORKDIR");
@@ -223,7 +223,8 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
 }
 #since no background running, just delete this cycle temp dir 
 system("rm -rf $WORKDIR/$CYCLE");
-
+#clean old WEB_DEST (verif_SFCOBS/cycles), because figures are cped to WEB_DEST2 (cycles/)
+&clean_dir("$WEB_DEST/cycles", 14);
   #-----------------------------------------------------------------------------
   # 10.3 Subroutine to avance the date
   #-----------------------------------------------------------------------------
@@ -275,4 +276,20 @@ system("rm -rf $WORKDIR/$CYCLE");
 
   my $new_date = sprintf("%04d%02d%02d%02d",$yy,$mm,$dd,$hh);
 }
+
+
+  sub clean_dir {
+        my ($cleandir, $nbfi) = @_;
+        @dclean = `ls -d $cleandir\/*20*`;
+        $numd = @dclean;
+        if ($numd > $nbfi ) {
+                $ndel = $numd - $nbfi ;
+                $ndel--;
+                @rdirs = @dclean[0 .. $ndel];
+                foreach  $rdir (@rdirs)  {
+                        chomp $rdir;
+                        system ("rm -rf $rdir");
+                }
+        }
+  }
 
