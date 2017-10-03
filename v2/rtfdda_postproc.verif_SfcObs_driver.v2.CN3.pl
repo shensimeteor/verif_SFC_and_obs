@@ -4,6 +4,7 @@
 #sishen 2017-05-18
 #sishen 2017-06-01, v2, support parallel running
 #sishen 2017-08-20, reverse the order of submitting cycles (latest cycle first), update on VERIF_INTERVAL
+#sishen 2017-10-02, add WRF_F plot_SFC_and_OBS here too
 #----------------------------------
 #parse arguments
 #----------------------------------
@@ -60,6 +61,7 @@ if ( ! ("$VALID" and "$GMID" and "$MEMBER" and "$VERIF_INTERVAL")) {
 #----------------------------------
 $HOMEDIR=$ENV{HOME};
 $GMODDIR="$HOMEDIR/data/GMODJOBS/$GMID";
+$RUNDIR="$HOMEDIR/data/cycles/$GMID/$MEMBER";
 $ENSPROCS="$ENV{CSH_ARCHIVE}/ncl";
 $MYLOGDIR="$HOMEDIR/data/cycles/$GMID/zout/postproc/ver$VALID";
 $EXECUTOR="rtfdda_postproc.verif_SfcObs.v2.CN3.pl"; ##
@@ -81,6 +83,40 @@ if (! "$MAX_PARALLEL_RUN") {
     $MAX_PARALLEL_RUN=1;
 }
 #--------------------
+#do obs thin 
+#--------------------
+$do_thin="True";
+if($do_thin == "True"){
+     $CYCLE=$VALID;
+     $dstart=&hh_advan_date($CYCLE, -$CYC_INT);
+     $dend=$CYCLE;
+     $WORKDIR="/dev/shm/postprocs/$GMID/obs_thin/";
+     $OBS_BANK="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/thined_obs/";
+     system("test -d $WORKDIR || mkdir -p $WORKDIR");
+     &wait_qcoutraw_or_wrfp("$RUNDIR/$CYCLE", 60, 60);
+     sleep(60);
+     print("to run process_qc_out_SfcObs -------- \n");
+     #thin obs
+     $max_dom_obs_thin=3;
+     $com_obs = "${GMODDIR}/process_qc_out_SfcObs.pl $CYCLE $dstart $dend $max_dom_obs_thin $GMID $MEMBER $WORKDIR/ >& $MYLOGDIR/zobs.sfcobs";
+     print("$com_obs \n");
+     system("date");
+     system ("$com_obs");
+     system("date");
+     $d=$dstart;
+     while ($d <= $dend) {
+         for $domi (1..$max_dom_obs_thin) {
+             #cp thined obs, for use of verification 
+             $thined_obs_file="$WORKDIR/$CYCLE/$d/obs_thin/d$domi/$d.hourly.obs_sgl.nc";
+             system("test -d $OBS_BANK/d$domi|| mkdir -p $OBS_BANK/d$domi");
+             system("mv $thined_obs_file $OBS_BANK/d$domi/");
+         }
+         $d=&hh_advan_date($d, 1);
+     }
+     system("rm -rf $WORKDIR/");
+     print("finished mv to OBS_BANK");
+}
+#--------------------
 #do verif_SFC_and_obs
 #--------------------
 $start_try=&tool_date12_add("${VALID}00", -$MAX_VERIF_HOURS, "hours");
@@ -89,17 +125,15 @@ $start_try=substr($start_try, 0, 10);
 $end_try=$VALID;
 print $end_try."\n";
 #$try=$start_try;
-$try=&hh_advan_date($end_try, -$VERIF_INTERVAL);
+#$try=&hh_advan_date($end_try, -$VERIF_INTERVAL);
+$try=$end_try;
 while ($try >= $start_try) {
     #get start_hour, end_hour
     $temp=&tool_date12_diff_minutes("${VALID}00", "${try}00");
     $end_hour = $temp/60;
-    $start_hour = $end_hour-$VERIF_INTERVAL;
-    if($start_hour < 0) {
-        $start_hour=0;
-    }
+    $start_hour = $end_hour-$VERIF_INTERVAL+1;
     #run
-    $cmd="$GMODDIR/$EXECUTOR -id $GMID -m $MEMBER -c $try -s $start_hour -e $end_hour -d $VERIF_INCRE_HOUR >& $MYLOGDIR/zverif_obssfc.$try";
+    $cmd="$GMODDIR/$EXECUTOR -id $GMID -m $MEMBER -c $try -s $start_hour -e $end_hour -d $VERIF_INCRE_HOUR -log $MYLOGDIR >& $MYLOGDIR/zverif_obssfc.$try";
     if($MAX_PARALLEL_RUN == 1){
         print($cmd."\n");
         system($cmd);
@@ -171,4 +205,35 @@ while ($try >= $start_try) {
   }
 
   my $new_date = sprintf("%04d%02d%02d%02d",$yy,$mm,$dd,$hh);
+  }
+
+# if RAP_RTFDDA/raw or WRF_P exist, return; else, wait up to $max_wait * $wait_int_sec 
+  sub wait_qcoutraw_or_wrfp{
+      my ($cycle_rundir, $max_wait, $wait_int_sec) = @_;
+      my $qcoutdir="$cycle_rundir/RAP_RTFDDA/";
+      my $iwait=0;
+      my $status=0; #1, exist; 0, no
+      print("in wait_qcoutraw_or_wrfp --- \n");
+      for ($iwait=0; $iwait < $max_wait; $iwait++){
+          if ( -d "$cycle_rundir/WRF_P" ) {
+              $status=1;
+              $nqc=`ls -l $qcoutdir/qc_out* | wc -l `;
+              print("WRF_P found, nqcout = $nqc, return\n");
+              last;
+          }elsif ( -d "$qcoutdir/raw/"){
+              $status=1;
+              sleep 50; 
+              $nqc=`ls -l $qcoutdir/qc_out* | wc -l `;
+              print("RTFDDA/raw found, nqcout = $nqc, return\n");
+              last;
+          }
+          print("to wait, iwait=$iwait\n");
+          sleep $wait_int_sec;
+      }
+      if($status==1){
+          return "True";
+      }else{
+          print("max_wait exceed, return False\n");
+          return "False";
+      }
   }

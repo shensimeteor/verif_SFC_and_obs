@@ -1,8 +1,9 @@
 #!/usr/bin/perl
-#arguments: -id GMID -m GFS_WCTRL [-c CYCLE | -o offset] [-s start_hour] [-e end_hour] [-d incre_hour]
+#arguments: -id GMID -m GFS_WCTRL [-c CYCLE | -o offset] [-s start_hour] [-e end_hour] [-d incre_hour] [-log dirlog]
 #v1, 2017-5-17
 #v2, 2017-6-1, support subdomain, reading verif_sfcobs.input.pl
 #2017-08-15, change to use plot_SFC_and_obs_new.ncl 
+#2017-10-2, change to contain analysis plots, &, if OBS_BANK not there, do process_qc_out
 #dependencies: flexinput.pl verif_sfcobs.input.pl etc.
 #----------------------------------
 #parse arguments
@@ -10,6 +11,8 @@
 @argus=@ARGV;
 $narg=scalar(@argus);
 $iarg=0;
+$START_HOUR = 0; #default
+$END_HOUR = -99;
 while ($iarg < $narg) {
     if ( $argus[$iarg] eq "-id") {
         $GMID=$argus[$iarg+1];
@@ -42,17 +45,19 @@ while ($iarg < $narg) {
         $INCRE_HOUR=$argus[$iarg+1];
         $iarg+=2;
         next;
+    }elsif ($argus[$iarg] eq "-log") {
+        $mylogdir=$argus[$iarg+1];
+        $iarg+=2;
+        next;
     }elsif ($argus[$iarg] eq "--") {
         last;
     }
 }
 if ( ! ("$CYCLE" and "$GMID" and "$MEMBER")) {
-    print "<usage> : $0  -id GMID -m GFS_WCTRL [-c CYCLE | -o offset] [-s start_hour] [-e end_hour] [-d incre_hour]\n";
+    print "<usage> : $0  -id GMID -m GFS_WCTRL [-c CYCLE | -o offset] [-s start_hour] [-e end_hour] [-d incre_hour] [-log log_dir]\n";
     print "- sishen, 2017-5-17 \n";
     exit(-1);
 }
-$START_HOUR=0 if(! "$START_HOUR");
-$END_HOUR=-1 if(! "$END_HOUR");
 $INCRE_HOUR=1 if(! "$INCRE_HOUR");
 
 #----------------------------------
@@ -62,6 +67,9 @@ $HOMEDIR=$ENV{HOME};
 $GMODDIR="$HOMEDIR/data/GMODJOBS/$GMID";
 $ENSPROCS="$ENV{CSH_ARCHIVE}/ncl";
 $RUNDIR="$HOMEDIR/data/cycles/$GMID/$MEMBER/";
+if(! "$mylogdir") {
+    $mylogdir="$HOMEDIR/data/cycles/$GMID/zout/postproc/cyc$CYCLE/";
+}
 $ARCDIR="$HOMEDIR/data/cycles/$GMID/archive/$MEMBER/"; #aux_$cycle
 $OBS_BANK="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/thined_obs/";
 $WEB_DEST="$HOMEDIR/data/cycles/$GMID/$MEMBER/postprocs/web/verif_SFCOBS/";
@@ -73,7 +81,7 @@ system("test -d $WEB_DEST/gifs/ || mkdir -p $WEB_DEST/gifs/");
 system("test -d $DIR_STATS || mkdir -p $DIR_STATS"); 
 
 require "$GMODDIR/flexinput.pl";
-if ($END_HOUR == -1 ) {
+if ($END_HOUR == -99 ) {
     $END_HOUR=$FCST_LENGTH;
 }
 
@@ -100,7 +108,7 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
         system("date");
         $mywork="$WORKDIR/$CYCLE/$d/d$dom/";
         #--------------------
-        #get thined_obs
+        #copy thined_obs
         #--------------------
         $file_obs="$OBS_BANK/d${dom_obs}/${d}.hourly.obs_sgl.nc";
         if( -s $file_obs) {
@@ -123,7 +131,16 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
             $file_path="$mywork/wrfoutfile/aux3_reformatted.nc";
         }else{
             $file_name1=&tool_date12_to_outfilename("auxhist3_d0${dom_wrf}_", "${d}00", "");
-            $file_path1="$RUNDIR/$CYCLE/WRF_P/$file_name1";
+            if($h < 0) {
+                $file_path1="$RUNDIR/$CYCLE/WRF_F/$file_name1";
+            }elsif($h == 0){
+                $file_path1="$RUNDIR/$CYCLE/WRF_P/$file_name1";
+                if( ! -e $file_path1) {
+                    $file_path1 = "$RUNDIR/$CYCLE/WRF_F/$file_name1";
+                }
+            }else{
+                $file_path1="$RUNDIR/$CYCLE/WRF_P/$file_name1";
+            }
             $file_name2=&tool_date12_to_outfilename("auxhist3_d0${dom_wrf}_", "${d}00", ".nc4.p");
             $file_path2="$ARCDIR/aux3_$CYCLE/$file_name2";
             $file_name3=$file_name2;
@@ -196,7 +213,7 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
             $iszoom="True";
         }
         $file_stats="$DIR_STATS/d${dom}_${d}_stats.txt"; 
-        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST/gifs/\"' 'latlon=\"True\"' 'zoom=\"$iszoom\"' 'lat_s=$DOM_LAT1[$isub-1]' 'lat_e=$DOM_LAT2[$isub-1]' 'lon_s=$DOM_LON1[$isub-1]' 'lon_e=$DOM_LON2[$isub-1]' 'showStats=\"True\"' 'fileStats=\"$file_stats\"' 'optOutput=\"cycleOnly\"'  plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
+        $ncl = "ncl 'cycle=\"$CYCLE\"' 'file_in=\"$fn\"' 'qcfile_sfc_in=\"$file_obs\"' 'dom=$dom' 'web_dir=\"$WEB_DEST/gifs/\"' 'latlon=\"True\"' 'zoom=\"$iszoom\"' 'lat_s=$DOM_LAT1[$isub-1]' 'lat_e=$DOM_LAT2[$isub-1]' 'lon_s=$DOM_LON1[$isub-1]' 'lon_e=$DOM_LON2[$isub-1]' 'showStats=\"True\"' 'fileStats=\"$file_stats\"' 'optOutput=\"cycleOnly\"' 'filterQCValue=3' plot_SFC_and_obs.ncl >& zout.nclSFC.d${dom}.log";
         print($ncl);
         system($ncl);
         chdir("$WORKDIR");
@@ -209,7 +226,7 @@ for ($h=$START_HOUR; $h<=$END_HOUR; $h=$h+$INCRE_HOUR) {
         if(-d "$dest_cp1") {
             system("test -d $dest_cp1/$d || mkdir -p $dest_cp1/$d");
             system("cp -rf $dest2/* $dest_cp1/$d/");
-            system("mv $dest_cp1 $dest_cp2");
+            if($h > 0 ) {system("mv $dest_cp1 $dest_cp2")};
         }elsif (-d "$dest_cp2") {
             system("test -d $dest_cp2/$d || mkdir -p $dest_cp2/$d");
             system("cp -rf $dest2/* $dest_cp2/$d/");
@@ -292,4 +309,37 @@ system("rm -rf $WORKDIR/$CYCLE");
                 }
         }
   }
+
+# if RAP_RTFDDA/raw or WRF_P exist, return; else, wait up to $max_wait * $wait_int_sec 
+  sub wait_qcoutraw_or_wrfp{
+      my ($cycle_rundir, $max_wait, $wait_int_sec) = @_;
+      my $qcoutdir="$cycle_rundir/RAP_RTFDDA/";
+      my $iwait=0;
+      my $status=0; #1, exist; 0, no
+      print("in wait_qcoutraw_or_wrfp --- \n");
+      for ($iwait=0; $iwait < $max_wait; $iwait++){
+          if ( -d "$cycle_rundir/WRF_P" ) {
+              $status=1;
+              $nqc=`ls -l $qcoutdir/qc_out* | wc -l `;
+              print("WRF_P found, nqcout = $nqc, return\n");
+              last;
+          }elsif ( -d "$qcoutdir/raw/"){
+              $status=1;
+              sleep 50; 
+              $nqc=`ls -l $qcoutdir/qc_out* | wc -l `;
+              print("RTFDDA/raw found, nqcout = $nqc, return\n");
+              last;
+          }
+          print("to wait, iwait=$iwait\n");
+          sleep $wait_int_sec;
+      }
+      if($status==1){
+          return "True";
+      }else{
+          print("max_wait exceed, return False\n");
+          return "False";
+      }
+  }
+
+
 

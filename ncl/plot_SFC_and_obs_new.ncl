@@ -1,4 +1,7 @@
-;sishen, 20170815, add option: showStats="True", fileStats="file_to_save_stats"
+;sishen, 20170815, add option: showStats="True"(default:False), fileStats="file_to_save_stats"(default:null,don't save)
+;sishen, 20170915, add option: optOutput="all"(default), "cycleOnly", "updateOnly" 
+;sishen, 20171002, add option: filterQCValue=0..10 (only obs with qc>=x will be used to plot & statis, default 0)
+; --  for wind vector, qc = min(qc_ws, qc_wd) or min(qc_u, qc_v)(if qc_ws/wc_wd is missing); rh: qc=min(qc_temp, qc_dew)
 ;==============================================================================;
 ; 0. Define function
 ;==============================================================================;
@@ -283,6 +286,13 @@ wcStrt     = systemfunc("date")
   if(.not. isvar("fileStats")) then
       saveStats=False
   end if
+  if(.not. isvar("optOutput")) then
+      optOutput="all"
+  end if
+  if(.not. isvar("filterQCValue")) then
+      filterQCValue=0
+  end if
+  optOutput=str_lower(optOutput)
   ;-----------------------------------------------------------------------------
   ; 1.2 Parameters
   ;-----------------------------------------------------------------------------  
@@ -293,10 +303,10 @@ wcStrt     = systemfunc("date")
         city_lat = (/40.20802,40.19662,40.1012,40.1081,40.04613,40.14751,40.22899,40.0938,40.09075/)
         city_lon = (/-113.3386,-113.1671,-113.2208,-113.3073,-113.2081,-113.1559,-113.2174,-113.2032,-113.1096/)
   else
-	city_name =(/"S01","S02","S03","S04","S05","S06","S07","S08","S09","S10","S11","S12","S13","S14","S15","S16","S17","S18","S19","S20","S21","S22","S23","S24","S25","S26","S27","S28","S29","S30","S31","TWR"/)
-	city_lat = (/40.1838, 40.04613, 40.20802, 40.04602, 40.15694, 40.11945, 40.2269, 40.19662, 40.24254, 40.18169, 40.10345, 40.09075, 40.1067, 40.35306, \
+    city_name =(/"S01","S02","S03","S04","S05","S06","S07","S08","S09","S10","S11","S12","S13","S14","S15","S16","S17","S18","S19","S20","S21","S22","S23","S24","S25","S26","S27","S28","S29","S30","S31","TWR"/)
+    city_lat = (/40.1838, 40.04613, 40.20802, 40.04602, 40.15694, 40.11945, 40.2269, 40.19662, 40.24254, 40.18169, 40.10345, 40.09075, 40.1067, 40.35306, \
                      40.34109, 40.36726, 40.72728, 40.11649, 39.90445, 39.94554, 39.91933, 40.20812, 40.27838, 40.45272, 40.51593, 40.28214, 40.90886, 40.14751, 40.1012, 40.22899, 40.1081,40.0938/)
-	city_lon = (/-112.9217, -113.2081, -113.3386, -113.0455, -112.8937, -112.9542, -112.7253, -113.1671, -113.093, -113.0218, -112.9804, -113.1096, \
+    city_lon = (/-112.9217, -113.2081, -113.3386, -113.0455, -112.8937, -112.9542, -112.7253, -113.1671, -113.093, -113.0218, -112.9804, -113.1096, \
                      -112.8082, -113.0764, -113.2353, -113.0044, -113.4691, -113.5334, -113.3441, -113.7015, -112.939, -112.9596, -112.9811, -113.4724, \
                      -113.7465, -113.7002, -113.1528, -113.1559, -113.2208, -113.2174, -113.3073,-113.2032/)
   end if
@@ -434,7 +444,15 @@ wcStrt     = systemfunc("date")
 
 
      local_date = ""+ccyy+""+mm+""+dd+""+hh
-     figure_output_dir=(/web_dir+"/"+local_date+"/", web_dir+"/../cycles/"+cycle+"/"+local_date/)
+     if(optOutput .eq. "all") then
+         figure_output_dir=(/web_dir+"/"+local_date+"/", web_dir+"/../cycles/"+cycle+"/"+local_date/)
+     end if
+     if(optOutput .eq. "cycleonly") then
+         figure_output_dir=(/web_dir+"/../cycles/"+cycle+"/"+local_date/)
+     end if
+     if(optOutput .eq. "updateonly") then
+         figure_output_dir=(/web_dir+"/"+local_date+"/"/)
+     end if
 
   ;-----------------------------------------------------------------------------
   ; 3.2 Get WRF variables
@@ -609,7 +627,7 @@ wcStrt     = systemfunc("date")
 
       ;date = chartostring(ff->date(:,0:11))
       ;minutes = stringtointeger(chartostring(ff->date(:,10:11)))
-	
+    
       lat_ndc=new(dimsizes(latitude), float)
       lon_ndc=new(dimsizes(longitude), float)
       datatondc(plot,longitude,latitude,lon_ndc,lat_ndc)
@@ -620,14 +638,15 @@ wcStrt     = systemfunc("date")
           ( lon_ndc.gt.0.  .AND.  lon_ndc.lt.1.))
       ;delete(lat_ndc)
       ;delete(lon_ndc)
-	
+    
       nrec = dimsizes(.not.ismissing(indx))
       print ("Stations numbers: "+nrec)
 
       if (nrec.eq.0) then
           print("No stations to plot --> EXIT")
-	   ; exit
+       ; exit
       end if
+
 
       temp = ff->temperature
       temp = where(temp.lt.-887,temp@_FillValue,temp)
@@ -655,6 +674,27 @@ wcStrt     = systemfunc("date")
       wdir  = where(ismissing(wind_dir),wdir_c,wind_dir)
       wspdm = where(ismissing(wind_speed),wspdm_c,wind_speed)
       wspd  = 1.9438445*wspdm
+      
+      if(filterQCValue .gt. 0) then
+          temp_qc=ff->temperature_qc
+          dewp_qc=ff->dew_point_qc
+          ws_qc=ff->wind_speed_qc
+          wd_qc=ff->wind_direction_qc
+          u_qc=ff->u_wind_qc
+          v_qc=ff->v_wind_qc
+          rh_qc=where(temp_qc .gt. dewp_qc, dewp_qc, temp_qc)
+          wswd_qc=where(ws_qc .gt. wd_qc, wd_qc, ws_qc)
+          uv_qc=where(u_qc .gt. v_qc, v_qc, u_qc)
+          wind_qc=where(ismissing(wswd_qc), uv_qc, wswd_qc)
+          delete(wswd_qc)
+          delete(uv_qc)
+          temp = where(temp_qc .lt. filterQCValue, temp@_FillValue, temp)
+          dewp = where(dewp_qc .lt. filterQCValue, dewp@_FillValue, dewp)
+          wspdm = where(wind_qc .lt. filterQCValue, wspdm@_FillValue, wspdm) 
+          wspd  = 1.9438445*wspdm
+          wdir  = where(wind_qc .lt. filterQCValue, wdir@_FillValue, wdir)
+      end if
+
 
       ;wspd = mask(wspd,(abs(u2).gt.150.or.abs(v2).gt.150.),False)
       ;wspdm = mask(wspdm,(abs(u2).gt.150.or.abs(v2).gt.150.),False)
@@ -662,8 +702,8 @@ wcStrt     = systemfunc("date")
       ; yliu 20140310 comment out the following 3 lines
       ;wspd = where(qcsp.lt.3,wspd@_FillValue,wspd)
       ;wspdm = where(qcsp.lt.3,wspdm@_FillValue,wspdm)
-      ;wdir = where(qcsp.lt.3,wdir@_FillValue,wdir)	
-	
+      ;wdir = where(qcsp.lt.3,wdir@_FillValue,wdir) 
+    
       pmres               = True
       pmres@gsMarkerColor = "Red"
       pmres@gsMarkerIndex = 16
@@ -678,141 +718,127 @@ wcStrt     = systemfunc("date")
       ndim2 = dimsizes(LON2D)
       lonend   = LON2D(ndim2(0)-1,ndim2(1)-1)
       dlon = (lonend-lonstart)
-	
+    
       if (nrec.gt.1) then
           sm   = new(nrec,graphic)
           anno = new(nrec,graphic)
-	  dmax = dlon/20.
-	  if (dom.ge.4) then
-	 ;     dmax = 0.001
-	  end if
-	  
+          dmax = dlon/20.
+          if (dom.ge.4) then
+         ;     dmax = 0.001
+          end if
+          
           resT = True
-	  resT@ArrowLength      = 2.
-	  resT@CloudCircleColor = "red"
-	  resT@WindColor        = "red"
-	  m = 0
-	    do n=0,nrec-1
-	         far = True
-                 dist = 0.
-	         kk = 1
-	         k = indx(n)
-	
-	         if (n.gt.0) then
-	            delete(dist)
-	            delete(kk)
-
-	            dist = new(n,"float")
-		    kk   = indx(0:n-1)
-	            dist = sqrt( (latitude(kk)-latitude(k))^2 + \
-		               (longitude(kk)-longitude(k))^2 )
-		    if (min(dist) .lt. dmax) then
-		        far = False
-		    end if
-		 end if
-
-		 fmt = "%8.2f"
-		 miss = -999.
-		 
-                 if (far) then
-		    T  = miss;replace_missing(temp(k))
-		    T@_FillValue = miss
-	            Td = miss;replace_missing(dewp(k))
-		    Td@_FillValue = miss
-		    ws = replace_missing(wspd(k))
-                    ws@_FillValue = miss
-	            wd = replace_missing(wdir(k))
-                    wd@_FillValue = miss
-	            sm(m) = StationModel(wks, ws, wd, T, Td, resT)
-	            anno(m) = NhlAddAnnotation(plot,sm(m))
-
-	            setvalues anno(m)
-	              "amTrackData"    : True    ; Use data coords to position each annotation
-		      "amDataXF"       : longitude(k)
-		      "amDataYF"       : latitude(k)
-		      "amResizeNotify" : True      ; Resize annotations if map resizes.
-		    end setvalues
-		    m = m + 1
-	         else
-		    latitude(k) = latitude@_FillValue
-		    longitude(k) = longitude@_FillValue
-	         end if
-
-           end do
-        end if
+          resT@ArrowLength      = 2.
+          resT@CloudCircleColor = "red"
+          resT@WindColor        = "red"
+          m = 0
+          do n=0,nrec-1
+              far = True
+              dist = 0.
+              kk = 1
+              k = indx(n)
+    
+              if (n.gt.0) then
+                 delete(dist)
+                 delete(kk)
+                 dist = new(n,"float")
+                 kk = indx(0:n-1)
+                 dist = sqrt( (latitude(kk)-latitude(k))^2 + (longitude(kk)-longitude(k))^2 )
+                 if (min(dist) .lt. dmax) then
+                    far = False
+                 end if
+              end if
+              fmt = "%8.2f"
+              miss = -999.
+              if (far) then
+                 T  = miss;replace_missing(temp(k))
+                 T@_FillValue = miss
+                 Td = miss;replace_missing(dewp(k))
+                 Td@_FillValue = miss
+                 ws = replace_missing(wspd(k))
+                 ws@_FillValue = miss
+                 wd = replace_missing(wdir(k))
+                 wd@_FillValue = miss
+                 sm(m) = StationModel(wks, ws, wd, T, Td, resT)
+                 anno(m) = NhlAddAnnotation(plot,sm(m))
+                 setvalues anno(m)
+                    "amTrackData"    : True    ; Use data coords to position each annotation
+                    "amDataXF"       : longitude(k)
+                    "amDataYF"       : latitude(k)
+                    "amResizeNotify" : True      ; Resize annotations if map resizes.
+                 end setvalues
+                 m = m + 1
+              else
+                 latitude(k) = latitude@_FillValue
+                 longitude(k) = longitude@_FillValue
+              end if
+          end do
+   end if
   end if
 
-        if (dom.gt.1) then
-              mres = True
-              mres@gsMarkerIndex     = 16      ; open circle
-              mres@gsMarkerSizeF     = 0.006
-              mres@gsMarkerColor     = "Black"
-             ; marker = new(nb_cplot,"graphic")
+  if (dom.gt.1) then
+     mres = True
+     mres@gsMarkerIndex     = 16      ; open circle
+     mres@gsMarkerSizeF     = 0.006
+     mres@gsMarkerColor     = "Black"
+    ; marker = new(nb_cplot,"graphic")
 
-              tres               = True
-              tres@txFontHeightF = 0.01
-              tres@txFontColor     = "Black"
+     tres               = True
+     tres@txFontHeightF = 0.01
+     tres@txFontColor     = "Black"
 
-              text = new(nb_cplot,"graphic")
-                  offset = offs
-           ;   end if
+     text = new(nb_cplot,"graphic")
+         offset = offs
+  ;   end if
 
-             ; marker = gsn_add_polymarker(wks,plot,city_lon,city_lat,mres)
-             ; text   = gsn_add_text(wks,plot,city_name, city_lon,city_lat-offset,tres)
-              text   = gsn_add_text(wks,plot,city_name, city_lon,city_lat-offset,tres)
-      cmd = "ls map.ascii"
-      file_here2 = systemfunc (cmd)
-      if (.not.ismissing (file_here2)) then
-
-      bndry_file = "map.ascii"
-
-      lat_out  = new((/1000/),float)    ; Fix this later, set 1000 here
-      lon_out  = new((/1000/),float)    ; and pass it in
-      npts_out = new((/1000/),integer)
-
-      read_map_ascii(bndry_file, lat_out, lon_out, npts_out)
-
-      igood = ind(.not.ismissing(lat_out))  ; indices of non-missing values
-      ipts = ind(.not.ismissing(npts_out))  ; indices of non-missing values
-
-      if (.not.all(ismissing(igood)))
-          bnd_lat = lat_out(igood)
-          bnd_lon = lon_out(igood)
-      else
-          print ("bnd_lat, bnd_lon not created: all values are missing")
-      end if
-      if (.not.all(ismissing(ipts)))
-          nptsline = npts_out(ipts)
-      else
-          print ("nptsline not created: all values are missing")
-      end if
-
-      delete (igood)
-      delete (ipts)
-      npts_dim = dimsizes(nptsline)
-
-      plot_bndry = "True"
-      gres                  = True          ; polyline mods desired
-      gres@gsLineThicknessF = 4.0           ; line thickness
-      gres@gsLineColor      = "black"       ; line color
+    ; marker = gsn_add_polymarker(wks,plot,city_lon,city_lat,mres)
+    ; text   = gsn_add_text(wks,plot,city_name, city_lon,city_lat-offset,tres)
+     text   = gsn_add_text(wks,plot,city_name, city_lon,city_lat-offset,tres)
+     cmd = "ls map.ascii"
+     file_here2 = systemfunc (cmd)
+     if (.not.ismissing (file_here2)) then
+        bndry_file = "map.ascii"
+        lat_out  = new((/1000/),float)    ; Fix this later, set 1000 here
+        lon_out  = new((/1000/),float)    ; and pass it in
+        npts_out = new((/1000/),integer)
+        read_map_ascii(bndry_file, lat_out, lon_out, npts_out)
+        igood = ind(.not.ismissing(lat_out))  ; indices of non-missing values
+        ipts = ind(.not.ismissing(npts_out))  ; indices of non-missing values
+        if (.not.all(ismissing(igood)))
+            bnd_lat = lat_out(igood)
+            bnd_lon = lon_out(igood)
+        else
+            print ("bnd_lat, bnd_lon not created: all values are missing")
+        end if
+        if (.not.all(ismissing(ipts)))
+            nptsline = npts_out(ipts)
+        else
+            print ("nptsline not created: all values are missing")
+        end if
+        delete (igood)
+        delete (ipts)
+        npts_dim = dimsizes(nptsline)
+      
+        plot_bndry = "True"
+        gres                  = True          ; polyline mods desired
+        gres@gsLineThicknessF = 4.0           ; line thickness
+        gres@gsLineColor      = "black"       ; line color
 
   ;-------------------------------------------------------------
   ; 5.2 plot boundaries
   ;-------------------------------------------------------------
-      jcount = 0
-      dum = new(npts_dim,graphic)
-      do i = 0,npts_dim - 1
-         npairs = (nptsline(i)/2) - 1
-         dum(i) = gsn_add_polyline(wks, plot, bnd_lon(jcount:jcount+npairs),\
-         bnd_lat(jcount:jcount+npairs), gres)
-         jcount = jcount + npairs + 1
-      end do
+         jcount = 0
+         dum = new(npts_dim,graphic)
+         do i = 0,npts_dim - 1
+            npairs = (nptsline(i)/2) - 1
+            dum(i) = gsn_add_polyline(wks, plot, bnd_lon(jcount:jcount+npairs),\
+            bnd_lat(jcount:jcount+npairs), gres)
+            jcount = jcount + npairs + 1
+         end do
       end if
-      end if
-
-      draw(plot)
-      frame(wks)
-
+  end if
+  draw(plot)
+  frame(wks)
   ;si shen
   delete(wks)
   delete(plot)
@@ -885,26 +911,26 @@ wcStrt     = systemfunc("date")
                     T   = miss;replace_missing(temp(k))
                     Td  = miss;replace_missing(dewp(k))
                     ws  = replace_missing(wspdm(k))
-		    ws@_FillValue = miss
+            ws@_FillValue = miss
                     wd  = replace_missing(wdir(k))
                     wd@_FillValue = miss
-	 	    rad = 0.01745329
+            rad = 0.01745329
                     Uo  = -ws*sin(wd*rad)
                     Uo@_FillValue = miss
                     Vo  = -ws*cos(wd*rad)
                     Vo@_FillValue = miss
 
-		    wmsetp("vrs - size of reference vector in user space", 10.00)
-		    wmsetp("vrn - size of reference vector on plot in NDC space", 0.05)
-  		    wmsetp("vcw - linewidth scale",2.)
-		    wmsetp("vcc - vector color",34)
+            wmsetp("vrs - size of reference vector in user space", 10.00)
+            wmsetp("vrn - size of reference vector on plot in NDC space", 0.05)
+            wmsetp("vcw - linewidth scale",2.)
+            wmsetp("vcc - vector color",34)
                     wmsetp("vch",0.006)
                     ;wmsetp("col", 240)    ; the vector color
                     ;          wmsetp("wbs", .03)  ; the vector arrow size
                     ;          wmsetp("vcw", 100.)   ; Increase the linewidth
                     ;wmsetp("vrn - size of reference vector on plot in NDC space", 0.08)
 
-		    wmvectmap(wks, latitude(k), longitude(k), Uo, Vo)
+            wmvectmap(wks, latitude(k), longitude(k), Uo, Vo)
 
                     m = m + 1
                  else
@@ -992,7 +1018,7 @@ wcStrt     = systemfunc("date")
   convert_and_copyout(file_out+"."+type, figure_output_dir)  
 
 
-			;2m-Temp
+            ;2m-Temp
       file_out = "upper_air/"+sprinti("d%i",dom)+ \
                  "_upper_air_T_2mAGL"
       wks = gsn_open_wks(type,file_out)
@@ -1067,10 +1093,10 @@ wcStrt     = systemfunc("date")
           mres@gsMarkerSizeF     = 0.008    ; twice normal size
           vardata = temp(indx)
           marker  = new(nrec,"graphic")
-	  marker2 = new(nrec,"graphic")
-	  lons = longitude(indx)
+      marker2 = new(nrec,"graphic")
+      lons = longitude(indx)
           lats = latitude(indx)
-	  lats_ndc = lat_ndc(indx)
+      lats_ndc = lat_ndc(indx)
           lons_ndc = lon_ndc(indx)
 
   dmax2 = 0.004;mres@gsMarkerSizeF
@@ -1095,13 +1121,13 @@ wcStrt     = systemfunc("date")
                             vardata.lt.array(perc_i))
              end if
              if (.not.all(ismissing(ind_color))) then
-	     do nn = 0, dimsizes(ind_color)-1
+         do nn = 0, dimsizes(ind_color)-1
                  mres@gsMarkerColor     = color_tab(perc_i)
                      marker(ind_color(nn)) = gsn_add_polymarker(wks,plot,lons(ind_color(nn)),\
                                                      lats(ind_color(nn)),mres)
                      marker2(ind_color(nn)) = gsn_add_polymarker(wks,plot,lons(ind_color(nn)),\
                                                      lats(ind_color(nn)),bres)
-	     end do
+         end do
              end if
              delete(ind_color)
           end do
@@ -1202,7 +1228,7 @@ wcStrt     = systemfunc("date")
       file_out = "upper_air/"+sprinti("d%i",dom)+ \
                  "_upper_air_TD_2mAGL"
       wks = gsn_open_wks(type,file_out)
- 	    ; sishen
+        ; sishen
       if (season .eq. "summer") then
           gsn_define_colormap(wks,"t_8step")
           array = ispan(-7, 39, 1); 
@@ -1213,7 +1239,7 @@ wcStrt     = systemfunc("date")
       ;delete(opts_var)
       nbval = dimsizes(array)
       color_tab = floattoint(fspan(2,nbval+2,nbval+1))
-		  ; end of sishen
+          ; end of sishen
       opts_var@FieldTitle         = "2-m Dew Point Temperature"
       opts_var@UnitLabel          = "C"
 
@@ -1356,7 +1382,7 @@ cot = 0
                "(/1.,1.,0.63/)", "(/1.00, 1.00,0.39/)","(/0.96, 0.96, 0.43/)","(/1.00, 0.82, 0.14/)","(/1.00, 0.64, 0.10/)", \
        "(/0.90, 0.48, 0.40/)", "(/0.93, 0.57,0.49/)", "(/0.94, 0.70, 0.57/)", "(/0.97, 0.78, 0.70/)", "(/1.00, 0.9, 0.9/)", \
            "(/.62, .62, .96/)", "(/.76, .76, .98/)", "(/0.86, 0.86, 1.00/)", "(/.51, .82, 1.00/)", \
-       	"(/.58, .96, .96/)","(/.73, .96, .73/)", "(/0.55, 0.92, 0.55/)", "(/.36, .82, .36/)", "(/.05, .92, .05/)"/)
+        "(/.58, .96, .96/)","(/.73, .96, .73/)", "(/0.55, 0.92, 0.55/)", "(/.36, .82, .36/)", "(/.05, .92, .05/)"/)
      gsn_define_colormap(wks,cmaprh)
       ;gsn_define_colormap(wks,"rh_19lev")
       ;gsn_define_colormap(wks,"WhViBlGrYeOrRe")
@@ -1384,9 +1410,9 @@ cot = 0
           mres = True
           mres@gsMarkerIndex     = 16      ; open circle
           mres@gsMarkerSizeF     = 0.008    ; twice normal size
-	  tempk = temp(indx)+273.15
-	  dewpk = dewp(indx)+273.15
-	  delete(vardata)
+      tempk = temp(indx)+273.15
+      dewpk = dewp(indx)+273.15
+      delete(vardata)
           vardata = relhum_ttd (tempk, dewpk, 0)
           marker  = new(nrec,"graphic")
           marker2 = new(nrec,"graphic")
