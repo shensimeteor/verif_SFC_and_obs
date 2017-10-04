@@ -8,7 +8,7 @@
   load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
   load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
   load "$NCARG_ROOT/lib/ncarg/nclscripts/wrf/WRFUserARW.ncl"
- 
+  load "convert_and_copyout.ncl"
   ;-----------------------------------------------------------------------------
   ; 0.1 wrf_map_overlays
   ;-----------------------------------------------------------------------------  
@@ -470,9 +470,7 @@ wcStrt     = systemfunc("date")
       frame(wks)
       delete(wks)
       delete(plot)
-  system("convert -alpha off -trim +repage -density 120 "+file_out+".png"+" "+file_out+"x.gif") 
-  system("convert -resize 800 "+file_out+"x.gif "+file_out+".gif") 
-  system("rm "+file_out+".png "+file_out+"x.gif") 
+      convert_and_copyout(file_out+"."+type, (/""/))
 
   delete(color_tab)
   delete(array)

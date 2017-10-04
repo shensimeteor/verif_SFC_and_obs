@@ -247,10 +247,10 @@ wcStrt     = systemfunc("date")
        web_dir = "smac-c4-int2:/www/htdocs/images/ens/GEDPGL/NAM_WCTRL/gifs/"
        print(" You will use web_dir="+web_dir)
   end if
-  if(.not. isvar("optOutput")) then
-      optOutput="all"
+  if(.not. isvar("optoutput")) then
+      optoutput="all"
   end if
-  optOutput=str_lower(optOutput)
+  optoutput=str_lower(optoutput)
 
   ;-----------------------------------------------------------------------------
   ; 1.2 Parameters
