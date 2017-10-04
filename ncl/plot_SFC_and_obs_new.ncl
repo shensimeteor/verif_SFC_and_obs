@@ -1,7 +1,6 @@
 ;sishen, 20170815, add option: showStats="True"(default:False), fileStats="file_to_save_stats"(default:null,don't save)
 ;sishen, 20170915, add option: optOutput="all"(default), "cycleOnly", "updateOnly" 
 ;sishen, 20171002, add option: filterQCValue=0..10 (only obs with qc>=x will be used to plot & statis, default 0)
-; --  for wind vector, qc = min(qc_ws, qc_wd) or min(qc_u, qc_v)(if qc_ws/wc_wd is missing); rh: qc=min(qc_temp, qc_dew)
 ;==============================================================================;
 ; 0. Define function
 ;==============================================================================;
@@ -682,17 +681,21 @@ wcStrt     = systemfunc("date")
           wd_qc=ff->wind_direction_qc
           u_qc=ff->u_wind_qc
           v_qc=ff->v_wind_qc
-          rh_qc=where(temp_qc .gt. dewp_qc, dewp_qc, temp_qc)
-          wswd_qc=where(ws_qc .gt. wd_qc, wd_qc, ws_qc)
+          temp_qc=where( temp_qc .gt. 990, temp_qc@_FillValue, temp_qc)
+          dewp_qc=where( dewp_qc .gt. 990, dewp_qc@_FillValue, dewp_qc)
+          ws_qc=where( ws_qc .gt. 990, ws_qc@_FillValue, ws_qc)
+          wd_qc=where( wd_qc .gt. 990, wd_qc@_FillValue, wd_qc)
+          u_qc=where(u_qc .gt. 990, u_qc@_FillValue, u_qc)
+          v_qc=where(v_qc .gt. 990, v_qc@_FillValue, v_qc)
           uv_qc=where(u_qc .gt. v_qc, v_qc, u_qc)
-          wind_qc=where(ismissing(wswd_qc), uv_qc, wswd_qc)
-          delete(wswd_qc)
+          wspd_qc=where(ismissing(wind_speed), uv_qc, ws_qc)
+          wdir_qc=where(ismissing(wind_dir), uv_qc, wd_qc)
           delete(uv_qc)
-          temp = where(temp_qc .lt. filterQCValue, temp@_FillValue, temp)
-          dewp = where(dewp_qc .lt. filterQCValue, dewp@_FillValue, dewp)
-          wspdm = where(wind_qc .lt. filterQCValue, wspdm@_FillValue, wspdm) 
+          temp = where(ismissing(temp_qc) .or. (temp_qc .lt. filterQCValue), temp@_FillValue, temp)
+          dewp = where(ismissing(dewp_qc) .or. (dewp_qc .lt. filterQCValue), dewp@_FillValue, dewp)
+          wspdm = where(ismissing(wspd_qc) .or. (wspd_qc .lt. filterQCValue), wspdm@_FillValue, wspdm) 
           wspd  = 1.9438445*wspdm
-          wdir  = where(wind_qc .lt. filterQCValue, wdir@_FillValue, wdir)
+          wdir  = where(ismissing(wdir_qc) .or. (wdir_qc .lt. filterQCValue), wdir@_FillValue, wdir)
       end if
 
 
